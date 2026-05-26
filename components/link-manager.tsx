@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Add01Icon, ArrowUpRight01Icon } from "@hugeicons/core-free-icons"
+import {
+  Add01Icon,
+  ArrowUpRight01Icon,
+  Loading03Icon,
+} from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   addDoc,
@@ -32,10 +36,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { Link } from "@/data/links"
 import { db } from "@/lib/firebase/client"
-
-type LinkManagerProps = {
-  initialLinks: Link[]
-}
 
 const linkFormSchema = z
   .object({
@@ -77,7 +77,7 @@ function getDomain(url: string) {
   return new URL(url).hostname.replace(/^www\./, "")
 }
 
-export function LinkManager({ initialLinks }: LinkManagerProps) {
+export function LinkManager() {
   const [storedLinks, setStoredLinks] = useState<Link[]>([])
   const [isLoadingLinks, setIsLoadingLinks] = useState(true)
   const [listError, setListError] = useState("")
@@ -98,12 +98,12 @@ export function LinkManager({ initialLinks }: LinkManagerProps) {
     mode: "onSubmit",
     reValidateMode: "onChange",
   })
-  const linkItems = [...initialLinks, ...storedLinks]
+  const linkItems = storedLinks
 
   useEffect(() => {
     const storedLinksQuery = query(
       anonymousLinksCollection,
-      orderBy("createdAt", "asc")
+      orderBy("createdAt", "desc")
     )
 
     return onSnapshot(
@@ -163,15 +163,17 @@ export function LinkManager({ initialLinks }: LinkManagerProps) {
   async function addLink(values: LinkFormValues) {
     const normalizedUrl = new URL(values.url)
 
+    setIsOpen(false)
+
     try {
       await addDoc(anonymousLinksCollection, {
         title: values.title,
         url: normalizedUrl.toString(),
         createdAt: serverTimestamp(),
       })
-      setIsOpen(false)
       resetForm()
     } catch {
+      setIsOpen(true)
       setError("root", {
         type: "server",
         message: "링크를 저장하지 못했습니다. Firestore 권한을 확인해주세요.",
@@ -200,26 +202,42 @@ export function LinkManager({ initialLinks }: LinkManagerProps) {
             render={
               <Button
                 variant="ghost"
+                disabled={isSubmitting}
                 className="group/add h-20 w-full justify-start gap-4 rounded-none bg-primary px-4 text-left text-primary-foreground shadow-sm ring-1 ring-primary transition-[background-color,box-shadow,transform] duration-200 hover:-translate-y-px hover:bg-primary/85 hover:text-primary-foreground hover:shadow-md sm:px-5"
               />
             }
           >
             <span className="w-7 shrink-0 text-xs text-primary-foreground/75">
-              NEW
+              {isSubmitting ? "..." : "NEW"}
             </span>
             <span className="flex size-10 shrink-0 items-center justify-center border border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground">
-              <HugeiconsIcon icon={Add01Icon} size={20} aria-hidden="true" />
+              <HugeiconsIcon
+                icon={isSubmitting ? Loading03Icon : Add01Icon}
+                className={isSubmitting ? "animate-spin" : undefined}
+                size={20}
+                aria-hidden="true"
+              />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-base font-medium text-primary-foreground">
-                새 링크 추가
+              <span
+                className="block text-base font-medium text-primary-foreground"
+                role={isSubmitting ? "status" : undefined}
+              >
+                {isSubmitting ? "추가 중..." : "새 링크 추가"}
               </span>
               <span className="mt-0.5 block truncate text-sm font-normal text-primary-foreground/75">
-                새로운 작업 또는 채널 연결
+                {isSubmitting
+                  ? "새 링크를 저장하고 있습니다"
+                  : "새로운 작업 또는 채널 연결"}
               </span>
             </span>
             <span className="flex size-9 shrink-0 items-center justify-center border border-primary-foreground/15 bg-primary-foreground/10 text-primary-foreground transition-colors group-hover/add:bg-primary-foreground/20">
-              <HugeiconsIcon icon={Add01Icon} size={18} aria-hidden="true" />
+              <HugeiconsIcon
+                icon={isSubmitting ? Loading03Icon : Add01Icon}
+                className={isSubmitting ? "animate-spin" : undefined}
+                size={18}
+                aria-hidden="true"
+              />
             </span>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
@@ -302,7 +320,7 @@ export function LinkManager({ initialLinks }: LinkManagerProps) {
                 </DialogClose>
                 <Button type="submit" disabled={isSubmitting}>
                   <HugeiconsIcon icon={Add01Icon} data-icon="inline-start" />
-                  {isSubmitting ? "저장 중..." : "링크 추가"}
+                  링크 추가
                 </Button>
               </DialogFooter>
             </form>
@@ -350,8 +368,22 @@ export function LinkManager({ initialLinks }: LinkManagerProps) {
         ))}
 
         {isLoadingLinks && (
-          <p className="py-3 text-center text-sm text-muted-foreground">
-            저장된 링크를 불러오는 중입니다.
+          <Card className="py-0 bg-card/60">
+            <CardContent className="flex min-h-20 items-center justify-center gap-2 text-sm text-muted-foreground">
+              <HugeiconsIcon
+                icon={Loading03Icon}
+                className="animate-spin"
+                size={18}
+                aria-hidden="true"
+              />
+              저장된 링크를 불러오는 중입니다.
+            </CardContent>
+          </Card>
+        )}
+
+        {!isLoadingLinks && !listError && linkItems.length === 0 && (
+          <p className="border border-dashed border-border px-4 py-7 text-center text-sm text-muted-foreground">
+            저장된 링크가 없습니다. 첫 링크를 추가해보세요.
           </p>
         )}
 

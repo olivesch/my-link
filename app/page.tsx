@@ -1,5 +1,4 @@
 import { LinkManager } from "@/components/link-manager"
-import { links } from "@/data/links"
 
 const profile = {
   displayName: "dev_kim",
@@ -60,7 +59,7 @@ export default function Page() {
           </div>
         </aside>
 
-        <LinkManager initialLinks={links} />
+        <LinkManager />
       </div>
     </main>
   )
