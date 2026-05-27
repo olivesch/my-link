@@ -1,20 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Add01Icon, Loading03Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
-import {
-  addDoc,
-  collection,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  type DocumentData,
-  type QueryDocumentSnapshot,
-} from "firebase/firestore"
+import { addDoc, collection, serverTimestamp } from "firebase/firestore"
 import { useForm } from "react-hook-form"
 
 import { EditableLinkCard } from "@/components/editable-link-card"
@@ -32,61 +23,20 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import type { Link } from "@/data/links"
 import { db } from "@/lib/firebase/client"
+import { fetchLinks, getLinksQueryKey } from "@/lib/firebase/links"
 import { linkFormSchema, type LinkFormValues } from "@/lib/validations/link"
 
-const anonymousLinksCollection = collection(db, "users", "anonymous", "links")
-const storedLinksQuery = query(
-  anonymousLinksCollection,
-  orderBy("createdAt", "desc")
-)
 const linksLoadError =
   "저장된 링크를 불러오지 못했습니다. Firestore 권한을 확인해주세요."
 
-function getLinkFromDocument(
-  document: QueryDocumentSnapshot<DocumentData>
-): Link | null {
-  const data = document.data()
-
-  if (typeof data.title !== "string" || typeof data.url !== "string") {
-    return null
-  }
-
-  try {
-    new URL(data.url)
-  } catch {
-    return null
-  }
-
-  return {
-    id: document.id,
-    title: data.title,
-    url: data.url,
-  }
+type LinkManagerProps = {
+  userId: string
 }
 
-function getLinksFromDocuments(
-  documents: QueryDocumentSnapshot<DocumentData>[]
-) {
-  return documents.flatMap((document) => {
-    const link = getLinkFromDocument(document)
-
-    return link ? [link] : []
-  })
-}
-
-async function fetchStoredLinks() {
-  const snapshot = await getDocs(storedLinksQuery)
-
-  return getLinksFromDocuments(snapshot.docs)
-}
-
-export function LinkManager() {
-  const [storedLinks, setStoredLinks] = useState<Link[]>([])
-  const [isLoadingLinks, setIsLoadingLinks] = useState(true)
-  const [listError, setListError] = useState("")
+export function LinkManager({ userId }: LinkManagerProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const queryClient = useQueryClient()
   const {
     register,
     handleSubmit,
@@ -103,59 +53,36 @@ export function LinkManager() {
     mode: "onSubmit",
     reValidateMode: "onChange",
   })
-  const linkItems = storedLinks
+  const linksCollection = useMemo(
+    () => collection(db, "users", userId, "links"),
+    [userId]
+  )
+  const linksQueryKey = useMemo(() => getLinksQueryKey(userId), [userId])
+  const {
+    data: linkItems = [],
+    isPending: isLoadingLinks,
+    isError: hasListError,
+  } = useQuery({
+    queryKey: linksQueryKey,
+    queryFn: () => fetchLinks(userId),
+  })
 
   const refreshLinkList = useCallback(async () => {
-    try {
-      const nextLinks = await fetchStoredLinks()
-      setStoredLinks(nextLinks)
-      setListError("")
-    } catch {
-      setListError(linksLoadError)
-    }
-  }, [])
+    await queryClient.invalidateQueries({ queryKey: linksQueryKey })
+  }, [linksQueryKey, queryClient])
 
-  useEffect(() => {
-    let hasReceivedInitialLinks = false
+  const addLinkMutation = useMutation({
+    mutationFn: async (values: LinkFormValues) => {
+      const normalizedUrl = new URL(values.url)
 
-    return onSnapshot(
-      storedLinksQuery,
-      (snapshot) => {
-        if (!hasReceivedInitialLinks) {
-          setStoredLinks(getLinksFromDocuments(snapshot.docs))
-          setListError("")
-          setIsLoadingLinks(false)
-          hasReceivedInitialLinks = true
-          return
-        }
-
-        const addedLinkIds = new Set(
-          snapshot
-            .docChanges()
-            .filter((change) => change.type === "added")
-            .map((change) => change.doc.id)
-        )
-
-        if (addedLinkIds.size === 0) {
-          return
-        }
-
-        const addedLinks = getLinksFromDocuments(snapshot.docs).filter((link) =>
-          addedLinkIds.has(link.id)
-        )
-
-        setStoredLinks((currentLinks) => [
-          ...addedLinks,
-          ...currentLinks.filter((link) => !addedLinkIds.has(link.id)),
-        ])
-        setListError("")
-      },
-      () => {
-        setListError(linksLoadError)
-        setIsLoadingLinks(false)
-      }
-    )
-  }, [])
+      await addDoc(linksCollection, {
+        title: values.title,
+        url: normalizedUrl.toString(),
+        createdAt: serverTimestamp(),
+      })
+    },
+    onSuccess: refreshLinkList,
+  })
 
   function resetForm() {
     reset()
@@ -178,18 +105,11 @@ export function LinkManager() {
   }
 
   async function addLink(values: LinkFormValues) {
-    const normalizedUrl = new URL(values.url)
-
     try {
-      await addDoc(anonymousLinksCollection, {
-        title: values.title,
-        url: normalizedUrl.toString(),
-        createdAt: serverTimestamp(),
-      })
+      await addLinkMutation.mutateAsync(values)
       resetForm()
       setIsOpen(false)
     } catch {
-      await refreshLinkList()
       setError("root", {
         type: "server",
         message: "링크를 저장하지 못했습니다. Firestore 권한을 확인해주세요.",
@@ -198,19 +118,7 @@ export function LinkManager() {
   }
 
   return (
-    <section aria-labelledby="links-heading" className="min-w-0">
-      <div className="mb-7 flex items-end justify-between gap-4 border-b border-border pb-5">
-        <div>
-          <p className="mb-2 text-xs font-semibold text-primary">LINKS</p>
-          <h2 id="links-heading" className="text-2xl font-semibold">
-            작업과 채널
-          </h2>
-        </div>
-        <span className="text-sm text-muted-foreground">
-          {String(linkItems.length).padStart(2, "0")}
-        </span>
-      </div>
-
+    <section aria-label="링크 목록" className="min-w-0">
       <div className="flex flex-col gap-3">
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
           <DialogTrigger
@@ -223,11 +131,7 @@ export function LinkManager() {
               />
             }
           >
-            <HugeiconsIcon
-              icon={Add01Icon}
-              size={18}
-              aria-hidden="true"
-            />
+            <HugeiconsIcon icon={Add01Icon} size={18} aria-hidden="true" />
             <span className="text-base font-medium text-primary-foreground">
               새로운 링크 추가하기
             </span>
@@ -244,8 +148,8 @@ export function LinkManager() {
               <DialogHeader>
                 <DialogTitle>새 링크 추가</DialogTitle>
                 <DialogDescription>
-                  공개 프로필에 표시할 제목과 URL을 입력하세요. 아이콘은
-                  URL에서 자동으로 불러옵니다.
+                  공개 프로필에 표시할 제목과 URL을 입력하세요. 아이콘은 URL에서
+                  자동으로 불러옵니다.
                 </DialogDescription>
               </DialogHeader>
 
@@ -327,7 +231,10 @@ export function LinkManager() {
                     />
                   ) : (
                     <>
-                      <HugeiconsIcon icon={Add01Icon} data-icon="inline-start" />
+                      <HugeiconsIcon
+                        icon={Add01Icon}
+                        data-icon="inline-start"
+                      />
                       링크 추가
                     </>
                   )}
@@ -342,12 +249,13 @@ export function LinkManager() {
             key={link.id}
             index={index}
             link={link}
+            userId={userId}
             onRefresh={refreshLinkList}
           />
         ))}
 
         {isLoadingLinks && (
-          <Card className="py-0 bg-card/60">
+          <Card className="bg-card/60 py-0">
             <CardContent className="flex min-h-20 items-center justify-center gap-2 text-sm text-muted-foreground">
               <HugeiconsIcon
                 icon={Loading03Icon}
@@ -360,15 +268,15 @@ export function LinkManager() {
           </Card>
         )}
 
-        {!isLoadingLinks && !listError && linkItems.length === 0 && (
+        {!isLoadingLinks && !hasListError && linkItems.length === 0 && (
           <p className="border border-dashed border-border px-4 py-7 text-center text-sm text-muted-foreground">
             저장된 링크가 없습니다. 첫 링크를 추가해보세요.
           </p>
         )}
 
-        {listError && (
+        {hasListError && (
           <p className="border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {listError}
+            {linksLoadError}
           </p>
         )}
       </div>

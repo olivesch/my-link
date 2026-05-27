@@ -3,7 +3,9 @@ import { Geist_Mono, Noto_Sans } from "next/font/google"
 
 import "./globals.css"
 import { FirebaseAnalytics } from "@/components/firebase-analytics"
+import { QueryProvider } from "@/components/query-provider"
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "@/components/ui/sonner"
 import { cn } from "@/lib/utils"
 
 const notoSans = Noto_Sans({ subsets: ["latin"], variable: "--font-sans" })
@@ -14,8 +16,8 @@ const fontMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "dev_kim | MyLink",
-  description: "Frontend Developer dev_kim의 링크 페이지입니다.",
+  title: "MyLink | 나만의 링크 페이지",
+  description: "개발자와 크리에이터를 위한 개인 링크 관리 서비스입니다.",
 }
 
 export default function RootLayout({
@@ -35,10 +37,13 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ThemeProvider>
-          <FirebaseAnalytics />
-          {children}
-        </ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider>
+            <FirebaseAnalytics />
+            {children}
+            <Toaster position="top-center" />
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   )

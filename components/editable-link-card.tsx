@@ -36,6 +36,7 @@ import { linkFormSchema, type LinkFormValues } from "@/lib/validations/link"
 type EditableLinkCardProps = {
   index: number
   link: Link
+  userId: string
   onRefresh: () => Promise<void>
 }
 
@@ -43,13 +44,21 @@ function getDomain(url: string) {
   return new URL(url).hostname.replace(/^www\./, "")
 }
 
-function getLinkReference(linkId: string) {
-  return doc(db, "users", "anonymous", "links", linkId)
+function formatUpdatedAt(updatedAt: Date) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(updatedAt)
+}
+
+function getLinkReference(userId: string, linkId: string) {
+  return doc(db, "users", userId, "links", linkId)
 }
 
 export function EditableLinkCard({
   index,
   link,
+  userId,
   onRefresh,
 }: EditableLinkCardProps) {
   const [isEditing, setIsEditing] = useState(false)
@@ -91,7 +100,7 @@ export function EditableLinkCard({
 
   async function updateLink(values: LinkFormValues) {
     try {
-      await updateDoc(getLinkReference(link.id), {
+      await updateDoc(getLinkReference(userId, link.id), {
         title: values.title,
         url: new URL(values.url).toString(),
         updatedAt: serverTimestamp(),
@@ -118,7 +127,7 @@ export function EditableLinkCard({
     setDeleteError("")
 
     try {
-      await deleteDoc(getLinkReference(link.id))
+      await deleteDoc(getLinkReference(userId, link.id))
       await onRefresh()
       setIsDeleteOpen(false)
     } catch {
@@ -244,12 +253,22 @@ export function EditableLinkCard({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={`${link.title} 새 탭에서 열기`}
-          className="min-w-0 flex-1 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-w-0 flex-1 rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
-          <span className="block truncate text-base font-medium">{link.title}</span>
+          <span className="block truncate text-base font-medium">
+            {link.title}
+          </span>
           <span className="mt-0.5 block truncate text-sm text-muted-foreground">
             {getDomain(link.url)}
           </span>
+          {link.updatedAt && (
+            <time
+              className="mt-1 block truncate text-xs text-muted-foreground"
+              dateTime={link.updatedAt.toISOString()}
+            >
+              수정됨 {formatUpdatedAt(link.updatedAt)}
+            </time>
+          )}
         </a>
 
         <div className="flex shrink-0 items-center gap-1">
@@ -279,7 +298,10 @@ export function EditableLinkCard({
             >
               <HugeiconsIcon icon={Delete02Icon} />
             </DialogTrigger>
-            <DialogContent className="sm:max-w-sm" showCloseButton={!isDeleting}>
+            <DialogContent
+              className="sm:max-w-sm"
+              showCloseButton={!isDeleting}
+            >
               <DialogHeader>
                 <DialogTitle>정말 삭제하시겠습니까?</DialogTitle>
                 <DialogDescription>
@@ -336,7 +358,7 @@ export function EditableLinkCard({
             rel="noopener noreferrer"
             title="새 탭에서 열기"
             aria-label={`${link.title} 새 탭에서 열기`}
-            className="flex size-7 items-center justify-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50"
+            className="flex size-7 items-center justify-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:outline-none"
           >
             <HugeiconsIcon icon={ArrowUpRight01Icon} size={16} />
           </a>

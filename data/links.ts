@@ -3,6 +3,7 @@ export type Link = {
   title: string
   url: string
   icon?: string
+  updatedAt?: Date
 }
 
 export const links: Link[] = [
