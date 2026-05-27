@@ -162,6 +162,10 @@ export function LinkManager() {
   }
 
   function handleOpenChange(open: boolean) {
+    if (isSubmitting && !open) {
+      return
+    }
+
     setIsOpen(open)
 
     if (open) {
@@ -176,8 +180,6 @@ export function LinkManager() {
   async function addLink(values: LinkFormValues) {
     const normalizedUrl = new URL(values.url)
 
-    setIsOpen(false)
-
     try {
       await addDoc(anonymousLinksCollection, {
         title: values.title,
@@ -185,9 +187,9 @@ export function LinkManager() {
         createdAt: serverTimestamp(),
       })
       resetForm()
+      setIsOpen(false)
     } catch {
       await refreshLinkList()
-      setIsOpen(true)
       setError("root", {
         type: "server",
         message: "링크를 저장하지 못했습니다. Firestore 권한을 확인해주세요.",
@@ -222,19 +224,18 @@ export function LinkManager() {
             }
           >
             <HugeiconsIcon
-              icon={isSubmitting ? Loading03Icon : Add01Icon}
-              className={isSubmitting ? "animate-spin" : undefined}
+              icon={Add01Icon}
               size={18}
               aria-hidden="true"
             />
-            <span
-              className="text-base font-medium text-primary-foreground"
-              role={isSubmitting ? "status" : undefined}
-            >
-              {isSubmitting ? "추가 중..." : "새로운 링크 추가하기"}
+            <span className="text-base font-medium text-primary-foreground">
+              새로운 링크 추가하기
             </span>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent
+            className="sm:max-w-md"
+            showCloseButton={!isSubmitting}
+          >
             <form
               className="flex flex-col gap-5"
               noValidate
@@ -312,9 +313,24 @@ export function LinkManager() {
                 >
                   취소
                 </DialogClose>
-                <Button type="submit" disabled={isSubmitting}>
-                  <HugeiconsIcon icon={Add01Icon} data-icon="inline-start" />
-                  링크 추가
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  aria-label={isSubmitting ? "링크 추가 중" : undefined}
+                  className="min-w-24"
+                >
+                  {isSubmitting ? (
+                    <HugeiconsIcon
+                      icon={Loading03Icon}
+                      className="animate-spin"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <>
+                      <HugeiconsIcon icon={Add01Icon} data-icon="inline-start" />
+                      링크 추가
+                    </>
+                  )}
                 </Button>
               </DialogFooter>
             </form>
