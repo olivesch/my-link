@@ -1,25 +1,23 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
-import {
-  Add01Icon,
-  ArrowUpRight01Icon,
-  Loading03Icon,
-} from "@hugeicons/core-free-icons"
+import { Add01Icon, Loading03Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   addDoc,
   collection,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  type DocumentData,
+  type QueryDocumentSnapshot,
 } from "firebase/firestore"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
 
-import { LinkFavicon } from "@/components/link-favicon"
+import { EditableLinkCard } from "@/components/editable-link-card"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -36,45 +34,52 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { Link } from "@/data/links"
 import { db } from "@/lib/firebase/client"
-
-const linkFormSchema = z
-  .object({
-    title: z.string().trim().min(1, "링크 제목을 입력해주세요."),
-    url: z.string().trim().min(1, "URL을 입력해주세요."),
-  })
-  .superRefine(({ url }, context) => {
-    if (!url) {
-      return
-    }
-
-    let parsedUrl: URL
-
-    try {
-      parsedUrl = new URL(url)
-    } catch {
-      context.addIssue({
-        code: "custom",
-        message: "https://로 시작하는 올바른 URL을 입력해주세요.",
-        path: ["url"],
-      })
-      return
-    }
-
-    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
-      context.addIssue({
-        code: "custom",
-        message: "웹 주소는 http 또는 https 형식만 등록할 수 있습니다.",
-        path: ["url"],
-      })
-    }
-  })
-
-type LinkFormValues = z.infer<typeof linkFormSchema>
+import { linkFormSchema, type LinkFormValues } from "@/lib/validations/link"
 
 const anonymousLinksCollection = collection(db, "users", "anonymous", "links")
+const storedLinksQuery = query(
+  anonymousLinksCollection,
+  orderBy("createdAt", "desc")
+)
+const linksLoadError =
+  "저장된 링크를 불러오지 못했습니다. Firestore 권한을 확인해주세요."
 
-function getDomain(url: string) {
-  return new URL(url).hostname.replace(/^www\./, "")
+function getLinkFromDocument(
+  document: QueryDocumentSnapshot<DocumentData>
+): Link | null {
+  const data = document.data()
+
+  if (typeof data.title !== "string" || typeof data.url !== "string") {
+    return null
+  }
+
+  try {
+    new URL(data.url)
+  } catch {
+    return null
+  }
+
+  return {
+    id: document.id,
+    title: data.title,
+    url: data.url,
+  }
+}
+
+function getLinksFromDocuments(
+  documents: QueryDocumentSnapshot<DocumentData>[]
+) {
+  return documents.flatMap((document) => {
+    const link = getLinkFromDocument(document)
+
+    return link ? [link] : []
+  })
+}
+
+async function fetchStoredLinks() {
+  const snapshot = await getDocs(storedLinksQuery)
+
+  return getLinksFromDocuments(snapshot.docs)
 }
 
 export function LinkManager() {
@@ -100,45 +105,53 @@ export function LinkManager() {
   })
   const linkItems = storedLinks
 
+  const refreshLinkList = useCallback(async () => {
+    try {
+      const nextLinks = await fetchStoredLinks()
+      setStoredLinks(nextLinks)
+      setListError("")
+    } catch {
+      setListError(linksLoadError)
+    }
+  }, [])
+
   useEffect(() => {
-    const storedLinksQuery = query(
-      anonymousLinksCollection,
-      orderBy("createdAt", "desc")
-    )
+    let hasReceivedInitialLinks = false
 
     return onSnapshot(
       storedLinksQuery,
       (snapshot) => {
-        const nextLinks = snapshot.docs.flatMap((document) => {
-          const data = document.data()
+        if (!hasReceivedInitialLinks) {
+          setStoredLinks(getLinksFromDocuments(snapshot.docs))
+          setListError("")
+          setIsLoadingLinks(false)
+          hasReceivedInitialLinks = true
+          return
+        }
 
-          if (typeof data.title !== "string" || typeof data.url !== "string") {
-            return []
-          }
+        const addedLinkIds = new Set(
+          snapshot
+            .docChanges()
+            .filter((change) => change.type === "added")
+            .map((change) => change.doc.id)
+        )
 
-          try {
-            new URL(data.url)
-          } catch {
-            return []
-          }
+        if (addedLinkIds.size === 0) {
+          return
+        }
 
-          return [
-            {
-              id: document.id,
-              title: data.title,
-              url: data.url,
-            },
-          ]
-        })
+        const addedLinks = getLinksFromDocuments(snapshot.docs).filter((link) =>
+          addedLinkIds.has(link.id)
+        )
 
-        setStoredLinks(nextLinks)
+        setStoredLinks((currentLinks) => [
+          ...addedLinks,
+          ...currentLinks.filter((link) => !addedLinkIds.has(link.id)),
+        ])
         setListError("")
-        setIsLoadingLinks(false)
       },
       () => {
-        setListError(
-          "저장된 링크를 불러오지 못했습니다. Firestore 권한을 확인해주세요."
-        )
+        setListError(linksLoadError)
         setIsLoadingLinks(false)
       }
     )
@@ -173,6 +186,7 @@ export function LinkManager() {
       })
       resetForm()
     } catch {
+      await refreshLinkList()
       setIsOpen(true)
       setError("root", {
         type: "server",
@@ -203,41 +217,21 @@ export function LinkManager() {
               <Button
                 variant="ghost"
                 disabled={isSubmitting}
-                className="group/add h-20 w-full justify-start gap-4 rounded-none bg-primary px-4 text-left text-primary-foreground shadow-sm ring-1 ring-primary transition-[background-color,box-shadow,transform] duration-200 hover:-translate-y-px hover:bg-primary/85 hover:text-primary-foreground hover:shadow-md sm:px-5"
+                className="h-14 w-full justify-center gap-3 rounded-none bg-primary px-4 text-primary-foreground shadow-sm ring-1 ring-primary transition-[background-color,box-shadow,transform] duration-200 hover:-translate-y-px hover:bg-primary/85 hover:text-primary-foreground hover:shadow-md"
               />
             }
           >
-            <span className="w-7 shrink-0 text-xs text-primary-foreground/75">
-              {isSubmitting ? "..." : "NEW"}
-            </span>
-            <span className="flex size-10 shrink-0 items-center justify-center border border-primary-foreground/25 bg-primary-foreground/10 text-primary-foreground">
-              <HugeiconsIcon
-                icon={isSubmitting ? Loading03Icon : Add01Icon}
-                className={isSubmitting ? "animate-spin" : undefined}
-                size={20}
-                aria-hidden="true"
-              />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span
-                className="block text-base font-medium text-primary-foreground"
-                role={isSubmitting ? "status" : undefined}
-              >
-                {isSubmitting ? "추가 중..." : "새 링크 추가"}
-              </span>
-              <span className="mt-0.5 block truncate text-sm font-normal text-primary-foreground/75">
-                {isSubmitting
-                  ? "새 링크를 저장하고 있습니다"
-                  : "새로운 작업 또는 채널 연결"}
-              </span>
-            </span>
-            <span className="flex size-9 shrink-0 items-center justify-center border border-primary-foreground/15 bg-primary-foreground/10 text-primary-foreground transition-colors group-hover/add:bg-primary-foreground/20">
-              <HugeiconsIcon
-                icon={isSubmitting ? Loading03Icon : Add01Icon}
-                className={isSubmitting ? "animate-spin" : undefined}
-                size={18}
-                aria-hidden="true"
-              />
+            <HugeiconsIcon
+              icon={isSubmitting ? Loading03Icon : Add01Icon}
+              className={isSubmitting ? "animate-spin" : undefined}
+              size={18}
+              aria-hidden="true"
+            />
+            <span
+              className="text-base font-medium text-primary-foreground"
+              role={isSubmitting ? "status" : undefined}
+            >
+              {isSubmitting ? "추가 중..." : "새로운 링크 추가하기"}
             </span>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
@@ -328,43 +322,12 @@ export function LinkManager() {
         </Dialog>
 
         {linkItems.map((link, index) => (
-          <a
+          <EditableLinkCard
             key={link.id}
-            href={link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`${link.title} 새 탭에서 열기`}
-            className="group/link block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Card className="py-0 transition-[background-color,border-color,transform] duration-200 group-hover/link:-translate-y-px group-hover/link:border-primary/25 group-hover/link:bg-accent/45">
-              <CardContent className="flex min-h-20 items-center gap-4 px-4 py-3 sm:px-5">
-                <span className="w-7 shrink-0 text-xs text-muted-foreground">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-background">
-                  <LinkFavicon url={link.url} />
-                </span>
-
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-base font-medium">
-                    {link.title}
-                  </span>
-                  <span className="mt-0.5 block truncate text-sm text-muted-foreground">
-                    {getDomain(link.url)}
-                  </span>
-                </span>
-
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors group-hover/link:border-border group-hover/link:bg-background group-hover/link:text-foreground">
-                  <HugeiconsIcon
-                    icon={ArrowUpRight01Icon}
-                    size={18}
-                    aria-hidden="true"
-                  />
-                </span>
-              </CardContent>
-            </Card>
-          </a>
+            index={index}
+            link={link}
+            onRefresh={refreshLinkList}
+          />
         ))}
 
         {isLoadingLinks && (
