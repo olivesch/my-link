@@ -8,7 +8,11 @@ import { ArrowUpRight01Icon, Loading03Icon } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 
 import { LinkFavicon } from "@/components/link-favicon"
-import { fetchLinks, getLinksQueryKey } from "@/lib/firebase/links"
+import {
+  fetchLinks,
+  getLinksQueryKey,
+  recordLinkClick,
+} from "@/lib/firebase/links"
 import {
   fetchPublicProfile,
   getPublicProfileQueryKey,
@@ -47,6 +51,10 @@ function LinkList({ userId }: { userId: string }) {
     queryFn: () => fetchLinks(userId),
   })
 
+  function handleLinkClick(linkId: string) {
+    void recordLinkClick(userId, linkId).catch(() => undefined)
+  }
+
   if (isPending) {
     return (
       <p className="flex h-16 items-center justify-center gap-2 border border-border bg-card text-sm text-muted-foreground">
@@ -79,6 +87,7 @@ function LinkList({ userId }: { userId: string }) {
       target="_blank"
       rel="noopener noreferrer"
       className="group flex min-h-16 items-center gap-3 border border-border bg-card px-4 transition-colors hover:border-primary/35 hover:bg-primary/5 focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:outline-none"
+      onClick={() => handleLinkClick(link.id)}
     >
       <LinkFavicon url={link.url} />
       <span className="min-w-0 flex-1 truncate text-sm font-medium">

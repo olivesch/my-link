@@ -1,0 +1,56 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function hasClickCount() {
+      return resource.data.keys().hasAny(['clickCount']);
+    }
+
+    function isClickCountIncrement() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+        'clickCount',
+        'lastClickedAt',
+      ])
+        && request.resource.data.clickCount is int
+        && request.resource.data.lastClickedAt == request.time
+        && (
+          (
+            hasClickCount()
+            && resource.data.clickCount is int
+            && request.resource.data.clickCount == resource.data.clickCount + 1
+          )
+          || (
+            !hasClickCount()
+            && request.resource.data.clickCount == 1
+          )
+        );
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update, delete: if isOwner(userId);
+
+      match /links/{linkId} {
+        allow read: if true;
+        allow create, delete: if isOwner(userId);
+        allow update: if isOwner(userId) || isClickCountIncrement();
+      }
+    }
+
+    match /displayNames/{displayName} {
+      allow read: if true;
+      allow create, update: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.displayName == displayName;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+    }
+  }
+}

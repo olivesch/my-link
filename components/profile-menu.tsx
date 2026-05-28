@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query"
 import {
   ArrowDown01Icon,
   ArrowUpRight01Icon,
+  BarChartHorizontalIcon,
   CopyLinkIcon,
   EyeIcon,
   Loading03Icon,
@@ -15,6 +16,7 @@ import {
 import { HugeiconsIcon } from "@hugeicons/react"
 import { toast } from "sonner"
 
+import { LinkClickCount } from "@/components/link-click-count"
 import { LinkFavicon } from "@/components/link-favicon"
 import { Button } from "@/components/ui/button"
 import {
@@ -149,6 +151,10 @@ function PublicPagePreview({
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">
                     {link.title}
                   </span>
+                  <LinkClickCount
+                    count={link.clickCount}
+                    className="shrink-0"
+                  />
                 </a>
               ))
             )}
@@ -212,6 +218,10 @@ export function ProfileMenu({
           </div>
 
           <MenuSeparator />
+          <MenuItem render={<Link href="/stats" />}>
+            <HugeiconsIcon icon={BarChartHorizontalIcon} />
+            통계 보기
+          </MenuItem>
           <MenuItem render={<Link href={publicPagePath} />}>
             <HugeiconsIcon icon={ArrowUpRight01Icon} />내 페이지로 이동
           </MenuItem>

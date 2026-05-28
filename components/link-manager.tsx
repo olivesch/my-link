@@ -78,6 +78,7 @@ export function LinkManager({ userId }: LinkManagerProps) {
       await addDoc(linksCollection, {
         title: values.title,
         url: normalizedUrl.toString(),
+        clickCount: 0,
         createdAt: serverTimestamp(),
       })
     },

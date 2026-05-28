@@ -1,9 +1,13 @@
 import {
   collection,
+  doc,
   getDocs,
+  increment,
   orderBy,
   query,
+  serverTimestamp,
   Timestamp,
+  updateDoc,
   type DocumentData,
   type QueryDocumentSnapshot,
 } from "firebase/firestore"
@@ -30,6 +34,10 @@ function getLinkFromDocument(
     id: document.id,
     title: data.title,
     url: data.url,
+    clickCount:
+      typeof data.clickCount === "number" && Number.isFinite(data.clickCount)
+        ? data.clickCount
+        : 0,
     updatedAt:
       data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : undefined,
   }
@@ -51,5 +59,12 @@ export async function fetchLinks(userId: string) {
     const link = getLinkFromDocument(document)
 
     return link ? [link] : []
+  })
+}
+
+export async function recordLinkClick(userId: string, linkId: string) {
+  await updateDoc(doc(db, "users", userId, "links", linkId), {
+    clickCount: increment(1),
+    lastClickedAt: serverTimestamp(),
   })
 }

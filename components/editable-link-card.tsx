@@ -14,6 +14,7 @@ import { HugeiconsIcon } from "@hugeicons/react"
 import { deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore"
 import { useForm } from "react-hook-form"
 
+import { LinkClickCount } from "@/components/link-click-count"
 import { LinkFavicon } from "@/components/link-favicon"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -31,6 +32,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { Link } from "@/data/links"
 import { db } from "@/lib/firebase/client"
+import { recordLinkClick } from "@/lib/firebase/links"
 import { linkFormSchema, type LinkFormValues } from "@/lib/validations/link"
 
 type EditableLinkCardProps = {
@@ -135,6 +137,12 @@ export function EditableLinkCard({
     } finally {
       setIsDeleting(false)
     }
+  }
+
+  function handleTrackedClick() {
+    void recordLinkClick(userId, link.id)
+      .then(onRefresh)
+      .catch(() => undefined)
   }
 
   if (isEditing) {
@@ -254,6 +262,7 @@ export function EditableLinkCard({
           rel="noopener noreferrer"
           aria-label={`${link.title} 새 탭에서 열기`}
           className="min-w-0 flex-1 rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          onClick={handleTrackedClick}
         >
           <span className="block truncate text-base font-medium">
             {link.title}
@@ -261,6 +270,7 @@ export function EditableLinkCard({
           <span className="mt-0.5 block truncate text-sm text-muted-foreground">
             {getDomain(link.url)}
           </span>
+          <LinkClickCount count={link.clickCount} className="mt-1" />
           {link.updatedAt && (
             <time
               className="mt-1 block truncate text-xs text-muted-foreground"
@@ -359,6 +369,7 @@ export function EditableLinkCard({
             title="새 탭에서 열기"
             aria-label={`${link.title} 새 탭에서 열기`}
             className="flex size-7 items-center justify-center text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:outline-none"
+            onClick={handleTrackedClick}
           >
             <HugeiconsIcon icon={ArrowUpRight01Icon} size={16} />
           </a>
