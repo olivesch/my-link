@@ -464,7 +464,7 @@ function LandingPage({
                   <p className="text-lg font-semibold">MyLink Creator</p>
                   <p className="text-sm text-muted-foreground">@developer</p>
                   <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    만들고 배운 것을 한 곳에 정리하는 개발자입니다.
+                    프로젝트와 채널을 한 곳에 정리하는 개발자입니다.
                   </p>
                 </div>
               </div>
