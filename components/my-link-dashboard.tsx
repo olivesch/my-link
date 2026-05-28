@@ -6,9 +6,19 @@ import Link from "next/link"
 import { useMutation } from "@tanstack/react-query"
 import {
   ArrowUpRight01Icon,
+  ChartColumnIcon,
+  CodeCircleIcon,
+  CopyLinkIcon,
+  GithubIcon,
   GoogleIcon,
+  InstagramIcon,
+  Link02Icon,
   Loading03Icon,
   PencilEdit01Icon,
+  Rocket01Icon,
+  ShareKnowledgeIcon,
+  SparklesIcon,
+  YoutubeIcon,
 } from "@hugeicons/core-free-icons"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
@@ -183,6 +193,12 @@ type EditableBioProps = {
 
 type BioSaveState = "idle" | "pending" | "saving" | "saved" | "error"
 
+type LandingPageProps = {
+  authError: string
+  isAuthPending: boolean
+  onGoogleSignIn: () => void
+}
+
 function EditableBio({ userId, bio, onBioChange }: EditableBioProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [draft, setDraft] = useState(bio)
@@ -314,6 +330,290 @@ function EditableBio({ userId, bio, onBioChange }: EditableBioProps) {
   )
 }
 
+function LandingPage({
+  authError,
+  isAuthPending,
+  onGoogleSignIn,
+}: LandingPageProps) {
+  const previewLinks = [
+    {
+      title: "GitHub",
+      caption: "최근 커밋과 오픈소스",
+      icon: GithubIcon,
+    },
+    {
+      title: "Tech Blog",
+      caption: "기록해둔 문제 해결 과정",
+      icon: CodeCircleIcon,
+    },
+    {
+      title: "Portfolio",
+      caption: "프로젝트 데모와 결과물",
+      icon: Rocket01Icon,
+    },
+  ]
+  const workflowItems = [
+    {
+      title: "프로필",
+      description: "Google 계정 기반으로 이름, 소개, 공개 주소를 정리합니다.",
+      icon: SparklesIcon,
+    },
+    {
+      title: "링크",
+      description:
+        "GitHub, 블로그, 포트폴리오 링크를 하나의 목록으로 모읍니다.",
+      icon: Link02Icon,
+    },
+    {
+      title: "클릭",
+      description: "어떤 링크가 더 많이 눌렸는지 통계 페이지에서 확인합니다.",
+      icon: ChartColumnIcon,
+    },
+  ]
+
+  return (
+    <div className="mx-auto w-full max-w-6xl px-5 py-10 sm:px-8 sm:py-14">
+      <section className="grid min-h-[calc(100svh-8rem)] gap-10 lg:grid-cols-[minmax(0,1fr)_25rem] lg:items-center lg:gap-16">
+        <div className="max-w-2xl">
+          <p className="mb-4 inline-flex items-center gap-2 border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
+            <HugeiconsIcon icon={SparklesIcon} size={14} aria-hidden="true" />
+            MYLINK FOR DEVELOPERS
+          </p>
+          <h1 className="text-4xl leading-tight font-semibold sm:text-6xl">
+            Development in One Link.
+          </h1>
+          <p className="mt-6 max-w-xl text-sm leading-7 text-muted-foreground sm:text-base">
+            Github, 블로그, 포트폴리오까지 개발자의 정보를 한 페이지로
+            요약해보세요. 흩어진 작업물을 하나의 공개 페이지로 묶고, 클릭
+            흐름까지 가볍게 확인할 수 있습니다.
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Button
+              type="button"
+              size="lg"
+              disabled={isAuthPending}
+              className="h-11 px-4"
+              onClick={onGoogleSignIn}
+            >
+              <HugeiconsIcon
+                icon={isAuthPending ? Loading03Icon : GoogleIcon}
+                className={isAuthPending ? "animate-spin" : undefined}
+                data-icon="inline-start"
+              />
+              Google로 시작하기
+            </Button>
+            <a
+              href="#preview"
+              className={buttonVariants({
+                variant: "outline",
+                size: "lg",
+                className: "h-11 px-4",
+              })}
+            >
+              공개 페이지 미리보기
+              <HugeiconsIcon
+                icon={ArrowUpRight01Icon}
+                size={15}
+                aria-hidden="true"
+              />
+            </a>
+          </div>
+
+          {authError && (
+            <p className="mt-5 text-sm text-destructive" role="alert">
+              {authError}
+            </p>
+          )}
+
+          <div className="mt-9 grid max-w-xl grid-cols-3 border border-border bg-card">
+            <div className="border-r border-border px-4 py-3">
+              <p className="font-mono text-2xl font-semibold tabular-nums">3</p>
+              <p className="mt-1 text-xs text-muted-foreground">핵심 링크</p>
+            </div>
+            <div className="border-r border-border px-4 py-3">
+              <p className="font-mono text-2xl font-semibold tabular-nums">1</p>
+              <p className="mt-1 text-xs text-muted-foreground">공개 주소</p>
+            </div>
+            <div className="px-4 py-3">
+              <p className="font-mono text-2xl font-semibold tabular-nums">∞</p>
+              <p className="mt-1 text-xs text-muted-foreground">공유 가능</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="preview" className="lg:justify-self-end">
+          <div className="border border-border bg-card shadow-[8px_8px_0_var(--foreground)]">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="size-2 bg-primary" />
+                <span className="size-2 bg-muted-foreground/40" />
+                <span className="size-2 bg-muted-foreground/20" />
+              </div>
+              <code className="text-xs text-muted-foreground">
+                mylink.dev/@developer
+              </code>
+            </div>
+
+            <div className="px-5 py-6">
+              <div className="flex items-start gap-4">
+                <div className="flex size-16 shrink-0 items-center justify-center border border-primary/20 bg-primary/10 text-lg font-semibold text-primary">
+                  SC
+                </div>
+                <div className="min-w-0">
+                  <p className="text-lg font-semibold">MyLink Creator</p>
+                  <p className="text-sm text-muted-foreground">@developer</p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    만들고 배운 것을 한 곳에 정리하는 개발자입니다.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-2">
+                {previewLinks.map((item) => (
+                  <div
+                    key={item.title}
+                    className="flex min-h-14 items-center gap-3 border border-border bg-background px-4"
+                  >
+                    <HugeiconsIcon
+                      icon={item.icon}
+                      size={20}
+                      className="text-primary"
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {item.title}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {item.caption}
+                      </p>
+                    </div>
+                    <HugeiconsIcon
+                      icon={ArrowUpRight01Icon}
+                      size={16}
+                      className="text-muted-foreground"
+                      aria-hidden="true"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-2">
+                <div className="border border-border bg-primary/5 p-3">
+                  <p className="text-xs text-muted-foreground">이번 주 클릭</p>
+                  <p className="mt-1 font-mono text-2xl font-semibold tabular-nums">
+                    128
+                  </p>
+                </div>
+                <div className="border border-border p-3">
+                  <p className="text-xs text-muted-foreground">상위 링크</p>
+                  <p className="mt-1 truncate text-sm font-medium">GitHub</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-border py-10 sm:py-14">
+        <div className="border border-border bg-card shadow-[8px_8px_0_var(--foreground)]">
+          <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <span className="size-2 bg-primary" />
+              <span className="size-2 bg-muted-foreground/40" />
+              <span className="size-2 bg-muted-foreground/20" />
+              <code className="ml-2 text-xs text-muted-foreground">
+                setup.flow
+              </code>
+            </div>
+            <span className="w-fit border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary">
+              3 STEP
+            </span>
+          </div>
+
+          <div className="grid divide-y divide-border md:grid-cols-3 md:divide-x md:divide-y-0">
+            {workflowItems.map((item, index) => (
+              <div key={item.title} className="p-5 sm:p-6">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                    0{index + 1}
+                  </span>
+                  <span className="flex size-9 items-center justify-center border border-primary/20 bg-primary/5 text-primary">
+                    <HugeiconsIcon
+                      icon={item.icon}
+                      size={20}
+                      aria-hidden="true"
+                    />
+                  </span>
+                </div>
+                <h2 className="mt-5 text-lg font-semibold">{item.title}</h2>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  {item.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="pb-4 sm:pb-6">
+        <div className="grid gap-0 border border-border bg-card shadow-[8px_8px_0_var(--foreground)] md:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="border-b border-border px-5 py-6 sm:px-6 md:border-r md:border-b-0">
+            <p className="mb-3 inline-flex items-center gap-2 border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary">
+              <HugeiconsIcon icon={ShareKnowledgeIcon} size={14} />
+              SHARE STACK
+            </p>
+            <h2 className="text-2xl leading-tight font-semibold">
+              작업물을 보러 오는 사람에게 필요한 링크만 남깁니다.
+            </h2>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-muted-foreground">
+              GitHub, Instagram, YouTube, 블로그처럼 성격이 다른 채널도 하나의
+              흐름으로 보여줄 수 있습니다. 방문자는 고민 없이 눌러보고, 소유자는
+              통계로 반응을 확인합니다.
+            </p>
+          </div>
+
+          <div className="p-5 sm:p-6">
+            <div className="grid grid-cols-4 gap-2 md:grid-cols-2">
+              <span className="flex aspect-square items-center justify-center border border-border bg-background">
+                <HugeiconsIcon icon={GithubIcon} size={20} aria-hidden="true" />
+              </span>
+              <span className="flex aspect-square items-center justify-center border border-border bg-background">
+                <HugeiconsIcon
+                  icon={InstagramIcon}
+                  size={20}
+                  aria-hidden="true"
+                />
+              </span>
+              <span className="flex aspect-square items-center justify-center border border-border bg-background">
+                <HugeiconsIcon
+                  icon={YoutubeIcon}
+                  size={20}
+                  aria-hidden="true"
+                />
+              </span>
+              <span className="flex aspect-square items-center justify-center border border-border bg-primary text-primary-foreground">
+                <HugeiconsIcon
+                  icon={CopyLinkIcon}
+                  size={20}
+                  aria-hidden="true"
+                />
+              </span>
+            </div>
+            <div className="mt-4 border border-border bg-background p-3">
+              <p className="font-mono text-xs text-muted-foreground">
+                /github + /blog + /portfolio
+              </p>
+              <p className="mt-1 text-sm font-medium">하나의 MyLink로 공유</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
 export function MyLinkDashboard() {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
@@ -419,7 +719,7 @@ export function MyLinkDashboard() {
       <div className="h-1 bg-primary" />
 
       <header className="border-b border-border">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
           <div className="flex items-center gap-2.5">
             <span className="flex size-8 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
               M
@@ -530,37 +830,11 @@ export function MyLinkDashboard() {
           <LinkManager key={user.uid} userId={user.uid} />
         </div>
       ) : (
-        <section className="mx-auto flex min-h-[calc(100svh-5rem)] w-full max-w-5xl items-center px-5 py-12 sm:px-8">
-          <div className="max-w-lg">
-            <p className="mb-4 text-xs font-semibold text-primary">MYLINK</p>
-            <h1 className="text-3xl leading-tight font-semibold sm:text-5xl">
-              Development in One Link.
-            </h1>
-            <p className="mt-6 max-w-md text-sm leading-7 text-muted-foreground sm:text-base">
-              Github, 블로그, 포트폴리오까지 개발자의 정보를 한 페이지로
-              요약해보세요.
-            </p>
-            <Button
-              type="button"
-              size="lg"
-              disabled={isAuthPending}
-              className="mt-8"
-              onClick={handleGoogleSignIn}
-            >
-              <HugeiconsIcon
-                icon={isAuthPending ? Loading03Icon : GoogleIcon}
-                className={isAuthPending ? "animate-spin" : undefined}
-                data-icon="inline-start"
-              />
-              Google로 시작하기
-            </Button>
-            {authError && (
-              <p className="mt-5 text-sm text-destructive" role="alert">
-                {authError}
-              </p>
-            )}
-          </div>
-        </section>
+        <LandingPage
+          authError={authError}
+          isAuthPending={isAuthPending}
+          onGoogleSignIn={handleGoogleSignIn}
+        />
       )}
     </main>
   )
