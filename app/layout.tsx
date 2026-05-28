@@ -16,6 +16,9 @@ const fontMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
+  ),
   title: "MyLink | 나만의 링크 페이지",
   description: "개발자와 크리에이터를 위한 개인 링크 관리 서비스입니다.",
 }
