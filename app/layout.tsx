@@ -15,12 +15,52 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://my-link-pink.vercel.app"
+const siteTitle = "MyLink | Development in One Link"
+const siteDescription =
+  "GitHub, 블로그, 포트폴리오까지 개발자의 정보를 한 페이지로 요약해보세요."
+
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
-  ),
-  title: "MyLink | 나만의 링크 페이지",
-  description: "개발자와 크리에이터를 위한 개인 링크 관리 서비스입니다.",
+  metadataBase: new URL(siteUrl),
+  applicationName: "MyLink",
+  title: {
+    default: siteTitle,
+    template: "%s | MyLink",
+  },
+  description: siteDescription,
+  keywords: [
+    "MyLink",
+    "마이링크",
+    "링크트리",
+    "개발자 포트폴리오",
+    "프로필 링크",
+  ],
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: siteTitle,
+    description: siteDescription,
+    url: "/",
+    siteName: "MyLink",
+    locale: "ko_KR",
+    type: "website",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "MyLink - Development in One Link",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: siteTitle,
+    description: siteDescription,
+    images: ["/opengraph-image"],
+  },
 }
 
 export default function RootLayout({
