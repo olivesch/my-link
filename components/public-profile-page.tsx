@@ -106,14 +106,16 @@ function LinkList({ userId }: { userId: string }) {
 export function PublicProfilePage({ displayName }: { displayName: string }) {
   const {
     data: profile,
+    isFetching,
     isPending,
     isError,
   } = useQuery({
     queryKey: getPublicProfileQueryKey(displayName),
     queryFn: () => fetchPublicProfile(displayName),
+    retry: 1,
   })
 
-  if (isPending) {
+  if (isPending || (isFetching && profile === null)) {
     return (
       <main className="flex min-h-svh items-center justify-center bg-background">
         <p className="inline-flex items-center gap-2 text-sm text-muted-foreground">
